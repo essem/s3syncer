@@ -1,9 +1,18 @@
 const { spawnSync } = require("child_process");
+const commander = require("commander");
 
-const source = "/logs";
-const target = "s3://mybucket/";
-const syncInterval = 3;
-const shutdownDelay = 3;
+commander
+  .version("1.0.0", "-v, --version")
+  .usage("[OPTIONS]...")
+  .requiredOption("-s, --source <source-uri>", "Source URI")
+  .requiredOption("-t, --target <target-uri>", "Target URI")
+  .option(
+    "-i, --sync-interval <seconds>",
+    "Interval between each sync operation",
+    60
+  )
+  .option("-d, --shutdown-delay <seconds>", "Final delay before last sync", 5)
+  .parse(process.argv);
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -12,7 +21,7 @@ function sleep(ms) {
 }
 
 function sync() {
-  const cmd = `aws s3 sync ${source} ${target}`;
+  const cmd = `aws s3 sync ${commander.source} ${commander.target}`;
   console.log(cmd);
   const child = spawnSync(cmd, {
     stdio: "inherit",
@@ -26,8 +35,8 @@ async function main() {
   while (!inShutdown) {
     sync();
 
-    console.log(`sleep for ${syncInterval} seconds`);
-    await sleep(syncInterval * 1000);
+    console.log(`sleep for ${commander.syncInterval} seconds`);
+    await sleep(commander.syncInterval * 1000);
   }
 }
 
@@ -40,7 +49,7 @@ async function shutdown() {
   inShutdown = true;
   console.log("start shutdown...");
 
-  for (let i = shutdownDelay; i > 0; i--) {
+  for (let i = commander.shutdownDelay; i > 0; i--) {
     console.log(i);
     await sleep(1000);
   }
